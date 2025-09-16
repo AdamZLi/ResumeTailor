@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { WorkExperience, BulletPoint } from '../types'
+import { WorkExperience, BulletPoint, Link } from '../types'
+import LinkEditor from './LinkEditor'
 
 interface WorkExperienceEditorProps {
   workExperience: WorkExperience[]
@@ -10,6 +11,19 @@ interface WorkExperienceEditorProps {
 
 export default function WorkExperienceEditor({ workExperience, onUpdate }: WorkExperienceEditorProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
+
+  // Migrate old data structure to new structure
+  const migrateWorkExperience = (exp: WorkExperience[]): WorkExperience[] => {
+    return exp.map(experience => ({
+      ...experience,
+      bullets: experience.bullets.map(bullet => ({
+        ...bullet,
+        links: bullet.links || []
+      }))
+    }))
+  }
+
+  const migratedWorkExperience = migrateWorkExperience(workExperience)
 
   const addExperience = useCallback(() => {
     const newExperience: WorkExperience = {
@@ -21,31 +35,31 @@ export default function WorkExperienceEditor({ workExperience, onUpdate }: WorkE
       end_date: '',
       is_current: false,
       bullets: [],
-      order: workExperience.length,
+      order: migratedWorkExperience.length,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
-    onUpdate([...workExperience, newExperience])
+    onUpdate([...migratedWorkExperience, newExperience])
     setEditingId(newExperience.id)
-  }, [workExperience, onUpdate])
+  }, [migratedWorkExperience, onUpdate])
 
   const updateExperience = useCallback((id: string, updates: Partial<WorkExperience>) => {
-    const updated = workExperience.map(exp => 
+    const updated = migratedWorkExperience.map(exp => 
       exp.id === id ? { ...exp, ...updates, updated_at: new Date().toISOString() } : exp
     )
     onUpdate(updated)
-  }, [workExperience, onUpdate])
+  }, [migratedWorkExperience, onUpdate])
 
   const deleteExperience = useCallback((id: string) => {
-    const updated = workExperience.filter(exp => exp.id !== id)
+    const updated = migratedWorkExperience.filter(exp => exp.id !== id)
     onUpdate(updated)
     if (editingId === id) {
       setEditingId(null)
     }
-  }, [workExperience, onUpdate, editingId])
+  }, [migratedWorkExperience, onUpdate, editingId])
 
   const addBullet = useCallback((experienceId: string) => {
-    const experience = workExperience.find(exp => exp.id === experienceId)
+    const experience = migratedWorkExperience.find(exp => exp.id === experienceId)
     if (!experience) return
 
     const newBullet: BulletPoint = {
@@ -53,6 +67,7 @@ export default function WorkExperienceEditor({ workExperience, onUpdate }: WorkE
       text: '',
       is_active: true,
       order: experience.bullets.length,
+      links: [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
@@ -60,10 +75,10 @@ export default function WorkExperienceEditor({ workExperience, onUpdate }: WorkE
     updateExperience(experienceId, {
       bullets: [...experience.bullets, newBullet]
     })
-  }, [workExperience, updateExperience])
+  }, [migratedWorkExperience, updateExperience])
 
   const updateBullet = useCallback((experienceId: string, bulletId: string, updates: Partial<BulletPoint>) => {
-    const experience = workExperience.find(exp => exp.id === experienceId)
+    const experience = migratedWorkExperience.find(exp => exp.id === experienceId)
     if (!experience) return
 
     const updatedBullets = experience.bullets.map(bullet =>
@@ -71,15 +86,19 @@ export default function WorkExperienceEditor({ workExperience, onUpdate }: WorkE
     )
 
     updateExperience(experienceId, { bullets: updatedBullets })
-  }, [workExperience, updateExperience])
+  }, [migratedWorkExperience, updateExperience])
 
   const deleteBullet = useCallback((experienceId: string, bulletId: string) => {
-    const experience = workExperience.find(exp => exp.id === experienceId)
+    const experience = migratedWorkExperience.find(exp => exp.id === experienceId)
     if (!experience) return
 
     const updatedBullets = experience.bullets.filter(bullet => bullet.id !== bulletId)
     updateExperience(experienceId, { bullets: updatedBullets })
-  }, [workExperience, updateExperience])
+  }, [migratedWorkExperience, updateExperience])
+
+  const updateBulletLinks = useCallback((experienceId: string, bulletId: string, links: Link[]) => {
+    updateBullet(experienceId, bulletId, { links })
+  }, [updateBullet])
 
   return (
     <div className="space-y-4">
@@ -97,7 +116,7 @@ export default function WorkExperienceEditor({ workExperience, onUpdate }: WorkE
       </button>
 
       {/* Experience List */}
-      {workExperience.map((exp, index) => (
+      {migratedWorkExperience.map((exp, index) => (
         <div key={exp.id} className="border border-gray-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-medium text-gray-900">
@@ -218,36 +237,35 @@ export default function WorkExperienceEditor({ workExperience, onUpdate }: WorkE
                   </button>
                 </div>
                 
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {exp.bullets.map((bullet, bulletIndex) => (
-                    <div key={bullet.id} className="flex items-start space-x-2">
-                      <div className="flex items-center space-x-1 mt-2">
-                        <input
-                          type="checkbox"
-                          checked={bullet.is_active}
-                          onChange={(e) => updateBullet(exp.id, bullet.id, { is_active: e.target.checked })}
-                          className="rounded"
-                        />
-                        <span className="text-gray-400 text-sm">•</span>
+                    <div key={bullet.id} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={bullet.is_active}
+                            onChange={(e) => updateBullet(exp.id, bullet.id, { is_active: e.target.checked })}
+                            className="rounded"
+                          />
+                          <h5 className="text-sm font-medium text-gray-700">Bullet Point</h5>
+                        </div>
+                        <button
+                          onClick={() => deleteBullet(exp.id, bullet.id)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Delete Bullet
+                        </button>
                       </div>
-                      <div className="flex-1">
-                        <textarea
-                          value={bullet.text}
-                          onChange={(e) => updateBullet(exp.id, bullet.id, { text: e.target.value })}
-                          className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                          placeholder="Describe your achievement or responsibility..."
-                          rows={2}
-                        />
-                        <p className="text-xs text-gray-500 mt-1">
-                          {bullet.text.length}/220 characters
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => deleteBullet(exp.id, bullet.id)}
-                        className="text-red-600 hover:text-red-800 text-sm mt-2"
-                      >
-                        Delete
-                      </button>
+                      <LinkEditor
+                        links={bullet.links || []}
+                        onLinksUpdate={(links) => updateBulletLinks(exp.id, bullet.id, links)}
+                        text={bullet.text}
+                        onTextUpdate={(text) => updateBullet(exp.id, bullet.id, { text })}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        {bullet.text.length}/220 characters
+                      </p>
                     </div>
                   ))}
                 </div>

@@ -90,15 +90,15 @@ export default function StructuredEditor({ resume, onResumeUpdate }: StructuredE
   ]
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col border-2 border-red-500" style={{ height: '100%', maxHeight: '100%' }}>
       {/* Header */}
-      <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900">Resume Editor</h2>
-        <p className="text-sm text-gray-600 mt-1">Edit your resume sections below</p>
+      <div className="p-4 border-b border-gray-200 flex-shrink-0 bg-yellow-100">
+        <h2 className="text-lg font-semibold text-gray-900">Resume Editor</h2>
+        <p className="text-xs text-gray-600 mt-1">Edit your resume sections below</p>
       </div>
 
       {/* Section Navigation */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-3 border-b border-gray-200 flex-shrink-0 bg-green-100">
         <div className="flex flex-wrap gap-2">
           {sections.map((section) => (
             <button
@@ -107,7 +107,7 @@ export default function StructuredEditor({ resume, onResumeUpdate }: StructuredE
                 setActiveSection(section.type)
                 handleSectionToggle(section.type)
               }}
-              className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center space-x-2 px-2 py-1 rounded-lg text-xs font-medium transition-colors ${
                 activeSection === section.type
                   ? 'bg-blue-100 text-blue-700 border border-blue-200'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -115,7 +115,7 @@ export default function StructuredEditor({ resume, onResumeUpdate }: StructuredE
             >
               <span>{section.icon}</span>
               <span>{section.title}</span>
-              <span className="bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full text-xs">
+              <span className="bg-gray-200 text-gray-600 px-1 py-0.5 rounded-full text-xs">
                 {section.count}
               </span>
             </button>
@@ -123,9 +123,12 @@ export default function StructuredEditor({ resume, onResumeUpdate }: StructuredE
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
+      {/* Content - This is the scrollable area with 8.5 x 11 dimensions */}
+      <div className="flex-1 overflow-y-auto min-h-0 border-2 border-blue-500 bg-purple-100 flex justify-center items-start pt-4">
+        <div className="bg-white shadow-lg border border-gray-300 overflow-hidden" 
+             style={{ width: '8.5in', height: '11in' }}>
+          <div className="h-full overflow-y-auto" style={{ height: '11in' }}>
+            <div className="p-4 space-y-4">
           {/* Headline Section */}
           <div className="border border-gray-200 rounded-lg">
             <button
@@ -299,6 +302,8 @@ export default function StructuredEditor({ resume, onResumeUpdate }: StructuredE
                 />
               </div>
             )}
+            </div>
+          </div>
           </div>
         </div>
       </div>

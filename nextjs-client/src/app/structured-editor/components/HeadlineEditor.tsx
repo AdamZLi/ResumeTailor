@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Headline } from '../types'
+import { Headline, SocialLink } from '../types'
 
 interface HeadlineEditorProps {
   headline: Headline
@@ -11,36 +11,52 @@ interface HeadlineEditorProps {
 export default function HeadlineEditor({ headline, onUpdate }: HeadlineEditorProps) {
   const [formData, setFormData] = useState({
     name: headline.name,
-    title: headline.title,
     summary: headline.summary || '',
     email: headline.contact.email || '',
     phone: headline.contact.phone || '',
-    location: headline.contact.location || '',
     linkedin: headline.contact.linkedin || ''
   })
+
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>(
+    headline.social_links || [
+      { platform: 'linkedin', url: headline.contact.linkedin || '', is_active: !!headline.contact.linkedin },
+      { platform: 'medium', url: '', is_active: false },
+      { platform: 'github', url: '', is_active: false }
+    ]
+  )
 
   useEffect(() => {
     const updatedHeadline: Headline = {
       ...headline,
       name: formData.name,
-      title: formData.title,
+      title: '', // Always empty since we removed the field
       summary: formData.summary || undefined,
       contact: {
         ...(formData.email && { email: formData.email }),
         ...(formData.phone && { phone: formData.phone }),
-        ...(formData.location && { location: formData.location }),
         ...(formData.linkedin && { linkedin: formData.linkedin })
-      }
+      },
+      social_links: socialLinks
     }
     
     // Only call onUpdate if the headline actually changed
     if (JSON.stringify(headline) !== JSON.stringify(updatedHeadline)) {
       onUpdate(updatedHeadline)
     }
-  }, [formData]) // Only depend on formData, not headline or onUpdate
+  }, [formData, socialLinks]) // Depend on both formData and socialLinks
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
+  }
+
+  const handleSocialLinkChange = (platform: 'linkedin' | 'medium' | 'github', field: 'url' | 'is_active', value: string | boolean) => {
+    setSocialLinks(prev => 
+      prev.map(link => 
+        link.platform === platform 
+          ? { ...link, [field]: value }
+          : link
+      )
+    )
   }
 
   return (
@@ -59,20 +75,6 @@ export default function HeadlineEditor({ headline, onUpdate }: HeadlineEditorPro
         />
       </div>
 
-      {/* Title */}
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Professional Title *
-        </label>
-        <input
-          type="text"
-          value={formData.title}
-          onChange={(e) => handleChange('title', e.target.value)}
-          className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Senior Product Manager"
-        />
-      </div>
-
       {/* Summary */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -81,7 +83,7 @@ export default function HeadlineEditor({ headline, onUpdate }: HeadlineEditorPro
         <textarea
           value={formData.summary}
           onChange={(e) => handleChange('summary', e.target.value)}
-          rows={3}
+          rows={2}
           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           placeholder="Brief professional summary (optional)"
         />
@@ -91,57 +93,69 @@ export default function HeadlineEditor({ headline, onUpdate }: HeadlineEditorPro
       </div>
 
       {/* Contact Information */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Email
-          </label>
-          <input
-            type="email"
-            value={formData.email}
-            onChange={(e) => handleChange('email', e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="john@example.com"
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Email & Phone */}
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => handleChange('email', e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="john@example.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Phone
+            </label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => handleChange('phone', e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="+1 (555) 123-4567"
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Phone
-          </label>
-          <input
-            type="tel"
-            value={formData.phone}
-            onChange={(e) => handleChange('phone', e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="+1 (555) 123-4567"
-          />
-        </div>
 
+        {/* Right Column - Social Links */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Location
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Social Links
           </label>
-          <input
-            type="text"
-            value={formData.location}
-            onChange={(e) => handleChange('location', e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="New York, NY"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            LinkedIn
-          </label>
-          <input
-            type="url"
-            value={formData.linkedin}
-            onChange={(e) => handleChange('linkedin', e.target.value)}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="https://linkedin.com/in/johndoe"
-          />
+          <div className="space-y-3">
+            {socialLinks.map((link) => (
+              <div key={link.platform} className="flex items-center space-x-3">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={link.is_active}
+                    onChange={(e) => handleSocialLinkChange(link.platform, 'is_active', e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <label className="ml-2 text-sm font-medium text-gray-700 capitalize">
+                    {link.platform}
+                  </label>
+                </div>
+                <input
+                  type="url"
+                  value={link.url}
+                  onChange={(e) => handleSocialLinkChange(link.platform, 'url', e.target.value)}
+                  disabled={!link.is_active}
+                  className={`flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    !link.is_active ? 'bg-gray-100 text-gray-400' : ''
+                  }`}
+                  placeholder={`https://${link.platform}.com/username`}
+                />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

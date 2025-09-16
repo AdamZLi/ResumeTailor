@@ -9,11 +9,20 @@ export enum SectionType {
   SKILLS = "skills"
 }
 
+export interface Link {
+  id: string
+  text: string
+  url: string
+  created_at: string
+  updated_at: string
+}
+
 export interface BulletPoint {
   id: string
   text: string
   is_active: boolean
   order: number
+  links: Link[]
   created_at: string
   updated_at: string
 }
@@ -60,11 +69,26 @@ export interface Education {
   updated_at: string
 }
 
+export interface SocialLink {
+  platform: 'linkedin' | 'medium' | 'github'
+  url: string
+  is_active: boolean
+}
+
 export interface Headline {
   name: string
   title: string
   summary?: string
   contact: Record<string, string>
+  social_links: SocialLink[]
+  created_at: string
+  updated_at: string
+}
+
+export interface AdditionalInfoItem {
+  id: string
+  text: string
+  links: Link[]
   created_at: string
   updated_at: string
 }
@@ -72,7 +96,7 @@ export interface Headline {
 export interface AdditionalInfo {
   id: string
   category: string
-  items: string[]
+  items: (AdditionalInfoItem | string)[]
   order: number
   created_at: string
   updated_at: string

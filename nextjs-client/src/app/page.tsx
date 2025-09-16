@@ -250,13 +250,15 @@ export default function Home() {
       }
     }
     
-    // Extract title (line after name that's not a section header)
+    // Extract title (line after name that's not a section header) - move to summary instead
     if (resume.headline.title === "Professional Title") {
       const nameIndex = lines.findIndex(line => line.includes(resume.headline.name))
       if (nameIndex >= 0 && nameIndex + 1 < lines.length) {
         const titleLine = lines[nameIndex + 1]
         if (!/^[A-Z\s]+$/.test(titleLine) && !titleLine.includes('|') && titleLine.length < 150) {
-          resume.headline.title = titleLine
+          // Move the title to summary instead of title field
+          resume.headline.summary = titleLine
+          resume.headline.title = "" // Clear the title field
         }
       }
     }
@@ -278,7 +280,9 @@ export default function Home() {
         } else if (/^\+?[\d\s\-\(\)]+$/.test(trimmed) && trimmed.replace(/\D/g, '').length >= 10) {
           contact.phone = trimmed
         } else if (trimmed.toLowerCase().includes('linkedin')) {
-          contact.linkedin = trimmed
+          // If it's just "LinkedIn", we need to find the actual URL in the resume
+          // For now, set a placeholder that indicates we need the actual URL
+          contact.linkedin = "LinkedIn Profile" // This should be replaced with actual URL
         } else if (trimmed.toLowerCase().includes('medium')) {
           contact.medium = trimmed
         }
@@ -307,23 +311,49 @@ export default function Home() {
               workExperiences.push(currentJob)
             }
             
-            // Start new job
-            const jobMatch = line.match(/^(.+?)\s+(.+?)\s+\((.+?)\)\s+(.+?)$/)
+            // Start new job - fix the regex to properly parse the format
+            // Format: "Job Title  Company, Department (Notes) Year  Year"
+            const jobMatch = line.match(/^(.+?)\s{2,}(.+?)\s+\((.+?)\)\s+(.+?)$/)
             if (jobMatch) {
+              const [fullMatch, title, company, notes, dates] = jobMatch
+              const dateParts = dates.trim().split(/\s+/)
+              const startDate = dateParts[0]
+              const endDate = dateParts[1] || 'Present'
+              
               currentJob = {
                 id: `work-${workExperiences.length + 1}`,
-                title: jobMatch[1].trim(),
-                company: jobMatch[2].trim(),
+                title: title.trim(),
+                company: company.trim(),
                 location: '',
-                start_date: jobMatch[4].split(' ')[0],
-                end_date: jobMatch[4].split(' ')[2] || 'Present',
-                is_current: jobMatch[4].split(' ')[2] === 'Present',
+                start_date: startDate,
+                end_date: endDate,
+                is_current: endDate === 'Present',
                 bullets: [],
                 order: workExperiences.length,
                 created_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
               }
               currentBullets = []
+            } else {
+              // Try alternative pattern for Smith School (no parentheses)
+              const altMatch = line.match(/^(.+?)\s{2,}(.+?)\s+(\d{4})\s+(\d{4})$/)
+              if (altMatch) {
+                const [fullMatch, title, company, startDate, endDate] = altMatch
+                currentJob = {
+                  id: `work-${workExperiences.length + 1}`,
+                  title: title.trim(),
+                  company: company.trim(),
+                  location: '',
+                  start_date: startDate,
+                  end_date: endDate,
+                  is_current: false,
+                  bullets: [],
+                  order: workExperiences.length,
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString()
+                }
+                currentBullets = []
+              }
             }
           } else if (line.startsWith('- ')) {
             // This is a bullet point
@@ -617,8 +647,8 @@ export default function Home() {
   const coverage = keywords.length > 0 ? Math.round((selectedKeywords.length / keywords.length) * 100) : 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto p-6">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+      <div className="max-w-[140rem] mx-auto p-6">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-semibold text-gray-900 mb-2">Resume Tailor</h1>
@@ -966,7 +996,7 @@ export default function Home() {
 
       {/* Structured Editor Section */}
       {showStructuredEditor && (
-        <div className="max-w-7xl mx-auto px-6 py-6">
+        <div className="max-w-[140rem] mx-auto px-6 py-6">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -1000,7 +1030,7 @@ export default function Home() {
                 </button>
               </div>
             ) : structuredResume ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
                 {/* Left Panel - Structured Editor */}
                 <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
                   <StructuredEditor
@@ -1010,7 +1040,7 @@ export default function Home() {
                 </div>
                 
                 {/* Right Panel - Live Preview */}
-                <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden sticky top-4">
                   <LivePreview
                     resume={structuredResume}
                   />

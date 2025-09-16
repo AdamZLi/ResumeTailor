@@ -216,9 +216,9 @@ function StructuredEditorContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -272,18 +272,18 @@ function StructuredEditorContent() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-120px)]">
-          {/* Left Panel - Structured Editor */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="flex-1 max-w-7xl mx-auto px-6 py-6 w-full border-4 border-orange-500 overflow-hidden">
+        <div className="flex gap-6 h-full border-2 border-green-500">
+          {/* Left Panel - Structured Editor - Scrollable */}
+          <div className="flex-1 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden border-4 border-pink-500" style={{ height: 'calc(100vh - 120px)' }}>
             <StructuredEditor
               resume={resume}
               onResumeUpdate={handleResumeUpdate}
             />
           </div>
           
-          {/* Right Panel - Live Preview */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          {/* Right Panel - Live Preview - Sticky */}
+          <div className="w-1/2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-0 h-full hidden lg:block">
             <LivePreview
               resume={resume}
             />

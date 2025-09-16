@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { AdditionalInfo } from '../types'
+import { AdditionalInfo, AdditionalInfoItem, Link } from '../types'
+import LinkEditor from './LinkEditor'
 
 interface AdditionalInfoEditorProps {
   additionalInfo: AdditionalInfo[]
@@ -11,59 +12,100 @@ interface AdditionalInfoEditorProps {
 export default function AdditionalInfoEditor({ additionalInfo, onUpdate }: AdditionalInfoEditorProps) {
   const [editingId, setEditingId] = useState<string | null>(null)
 
+  // Migrate old data structure to new structure
+  const migrateAdditionalInfo = (info: AdditionalInfo[]): AdditionalInfo[] => {
+    return info.map(category => ({
+      ...category,
+      items: category.items.map((item, index) => {
+        // If item is a string (old format), convert to new format
+        if (typeof item === 'string') {
+          return {
+            id: `item_${Date.now()}_${index}`,
+            text: item,
+            links: [],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }
+        }
+        // If item is already an object but missing links, add empty links array
+        return {
+          ...item,
+          links: item.links || []
+        }
+      })
+    }))
+  }
+
+  const migratedAdditionalInfo = migrateAdditionalInfo(additionalInfo)
+
   const addCategory = useCallback(() => {
     const newCategory: AdditionalInfo = {
       id: `info_${Date.now()}`,
       category: '',
       items: [],
-      order: additionalInfo.length,
+      order: migratedAdditionalInfo.length,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }
-    onUpdate([...additionalInfo, newCategory])
+    onUpdate([...migratedAdditionalInfo, newCategory])
     setEditingId(newCategory.id)
-  }, [additionalInfo, onUpdate])
+  }, [migratedAdditionalInfo, onUpdate])
 
   const updateCategory = useCallback((id: string, updates: Partial<AdditionalInfo>) => {
-    const updated = additionalInfo.map(info => 
+    const updated = migratedAdditionalInfo.map(info => 
       info.id === id ? { ...info, ...updates, updated_at: new Date().toISOString() } : info
     )
     onUpdate(updated)
-  }, [additionalInfo, onUpdate])
+  }, [migratedAdditionalInfo, onUpdate])
 
   const deleteCategory = useCallback((id: string) => {
-    const updated = additionalInfo.filter(info => info.id !== id)
+    const updated = migratedAdditionalInfo.filter(info => info.id !== id)
     onUpdate(updated)
     if (editingId === id) {
       setEditingId(null)
     }
-  }, [additionalInfo, onUpdate, editingId])
+  }, [migratedAdditionalInfo, onUpdate, editingId])
 
   const addItem = useCallback((categoryId: string) => {
-    const category = additionalInfo.find(info => info.id === categoryId)
+    const category = migratedAdditionalInfo.find(info => info.id === categoryId)
     if (!category) return
+
+    const newItem: AdditionalInfoItem = {
+      id: `item_${Date.now()}`,
+      text: '',
+      links: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
 
     updateCategory(categoryId, {
-      items: [...category.items, '']
+      items: [...category.items, newItem]
     })
-  }, [additionalInfo, updateCategory])
+  }, [migratedAdditionalInfo, updateCategory])
 
-  const updateItem = useCallback((categoryId: string, index: number, value: string) => {
-    const category = additionalInfo.find(info => info.id === categoryId)
+  const updateItem = useCallback((categoryId: string, itemId: string, updates: Partial<AdditionalInfoItem>) => {
+    const category = migratedAdditionalInfo.find(info => info.id === categoryId)
     if (!category) return
 
-    const updatedItems = [...category.items]
-    updatedItems[index] = value
+    const updatedItems = category.items.map(item => 
+      item.id === itemId 
+        ? { ...item, ...updates, updated_at: new Date().toISOString() }
+        : item
+    )
     updateCategory(categoryId, { items: updatedItems })
-  }, [additionalInfo, updateCategory])
+  }, [migratedAdditionalInfo, updateCategory])
 
-  const deleteItem = useCallback((categoryId: string, index: number) => {
-    const category = additionalInfo.find(info => info.id === categoryId)
+  const deleteItem = useCallback((categoryId: string, itemId: string) => {
+    const category = migratedAdditionalInfo.find(info => info.id === categoryId)
     if (!category) return
 
-    const updatedItems = category.items.filter((_, i) => i !== index)
+    const updatedItems = category.items.filter(item => item.id !== itemId)
     updateCategory(categoryId, { items: updatedItems })
-  }, [additionalInfo, updateCategory])
+  }, [migratedAdditionalInfo, updateCategory])
+
+  const updateItemLinks = useCallback((categoryId: string, itemId: string, links: Link[]) => {
+    updateItem(categoryId, itemId, { links })
+  }, [updateItem])
 
   return (
     <div className="space-y-4">
@@ -81,7 +123,7 @@ export default function AdditionalInfoEditor({ additionalInfo, onUpdate }: Addit
       </button>
 
       {/* Category List */}
-      {additionalInfo.map((info, index) => (
+      {migratedAdditionalInfo.map((info, index) => (
         <div key={info.id} className="border border-gray-200 rounded-lg p-4">
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-medium text-gray-900">
@@ -133,22 +175,24 @@ export default function AdditionalInfoEditor({ additionalInfo, onUpdate }: Addit
                   </button>
                 </div>
                 
-                <div className="space-y-2">
-                  {info.items.map((item, itemIndex) => (
-                    <div key={itemIndex} className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        value={item}
-                        onChange={(e) => updateItem(info.id, itemIndex, e.target.value)}
-                        className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                        placeholder="Enter item..."
+                <div className="space-y-4">
+                  {info.items.map((item) => (
+                    <div key={item.id} className="border border-gray-200 rounded-lg p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="text-sm font-medium text-gray-700">Item</h5>
+                        <button
+                          onClick={() => deleteItem(info.id, item.id)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Delete Item
+                        </button>
+                      </div>
+                      <LinkEditor
+                        links={item.links}
+                        onLinksUpdate={(links) => updateItemLinks(info.id, item.id, links)}
+                        text={item.text}
+                        onTextUpdate={(text) => updateItem(info.id, item.id, { text })}
                       />
-                      <button
-                        onClick={() => deleteItem(info.id, itemIndex)}
-                        className="text-red-600 hover:text-red-800 text-sm"
-                      >
-                        Delete
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -159,14 +203,30 @@ export default function AdditionalInfoEditor({ additionalInfo, onUpdate }: Addit
           {/* Display items when not editing */}
           {editingId !== info.id && info.items.length > 0 && (
             <div className="mt-2">
-              <div className="flex flex-wrap gap-2">
-                {info.items.map((item, itemIndex) => (
-                  <span
-                    key={itemIndex}
-                    className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm"
-                  >
-                    {item}
-                  </span>
+              <div className="space-y-2">
+                {info.items.map((item) => (
+                  <div key={item.id} className="bg-gray-50 p-2 rounded">
+                    {item.links.length > 0 ? (
+                      <div className="space-y-1">
+                        <span className="text-sm text-gray-700">{item.text}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {item.links.map((link) => (
+                            <a
+                              key={link.id}
+                              href={link.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline text-xs"
+                            >
+                              {link.text}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-700">{item.text}</span>
+                    )}
+                  </div>
                 ))}
               </div>
             </div>
